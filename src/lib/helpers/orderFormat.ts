@@ -1,17 +1,30 @@
-export const ordersNumberParser = ([price, size]: [string, string]): [
-  number,
-  number
-] => {
-  const parsedSize = parseFloat(size) ?? 0;
-  const parsedPrice = parseFloat(price) ?? 0;
-  return [parsedPrice, parsedSize];
+type Order = {
+  price: number;
+  size: number;
+  isNewPrice: boolean;
 };
 
-export const orderWithTotalFormatter = (orders: [number, number][]) => {
+type OrderWithTotal = Order & { total: number };
+
+export const ordersNumberParser = ([price, size, isNewPrice]: [
+  string,
+  string,
+  boolean
+]): {
+  price: number;
+  size: number;
+  isNewPrice: boolean;
+} => {
+  const parsedSize = parseFloat(size) ?? 0;
+  const parsedPrice = parseFloat(price) ?? 0;
+  return { price: parsedPrice, size: parsedSize, isNewPrice };
+};
+
+export const orderWithTotalFormatter = (orders: Order[]): OrderWithTotal[] => {
   let total = 0;
-  return orders.map(([price, size]) => {
+  return orders.map(({ price, size, isNewPrice }) => {
     total += size;
-    return [price, size, total];
+    return { price, size, total, isNewPrice };
   });
 };
 

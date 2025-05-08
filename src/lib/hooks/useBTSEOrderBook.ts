@@ -3,8 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 
 export type OrderBook = {
-  bids: [string, string][];
-  asks: [string, string][];
+  // The format of the order book is an array of arrays, where each inner array contains:
+  // - Price (string)
+  // - Size (string)
+  // - Boolean indicating if the price does not exist in the order book before (true/false)
+  bids: [string, string, boolean][];
+  asks: [string, string, boolean][];
 };
 
 export default function useBTSEOrderBook(symbol = "BTC-PERP") {
@@ -43,7 +47,7 @@ export default function useBTSEOrderBook(symbol = "BTC-PERP") {
                   if (index !== -1) {
                     book[index][1] = size;
                   } else {
-                    book.push([price, size]);
+                    book.push([price, size, true]);
                   }
                 }
               });

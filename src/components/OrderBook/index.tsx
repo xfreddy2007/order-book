@@ -22,15 +22,15 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = "BTCPFC" }) => {
   const [isPriceGoingUp, setIsPriceGoingUp] = useState<boolean>(false);
 
   const buyOrdersWithTotal = orderWithTotalFormatter(
-    [...bids].map(ordersNumberParser).sort((a, b) => b[0] - a[0])
+    [...bids].map(ordersNumberParser).sort((a, b) => b.price - a.price)
   ).slice(0, 8);
   const sellOrdersWithTotal = orderWithTotalFormatter(
-    [...asks].map(ordersNumberParser).sort((a, b) => a[0] - b[0])
+    [...asks].map(ordersNumberParser).sort((a, b) => a.price - b.price)
   ).slice(0, 8);
 
   const maxTotal = Math.max(
-    ...buyOrdersWithTotal.map(([, , total]) => total),
-    ...sellOrdersWithTotal.map(([, , total]) => total)
+    ...buyOrdersWithTotal.map(({ total }) => total),
+    ...sellOrdersWithTotal.map(({ total }) => total)
   );
 
   const midPrice = ((+bids[0]?.[0] + +asks[0]?.[0]) / 2).toFixed(1);
@@ -61,20 +61,27 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = "BTCPFC" }) => {
 
       {/* Sells */}
       <div className="space-y-0.5">
-        {sellOrdersWithTotal.map(([price, size, total], i) => (
-          <div
-            key={`ask-${i}`}
-            className="relative flex justify-between px-1 font-bold"
-          >
+        {sellOrdersWithTotal
+          .reverse()
+          .map(({ price, size, total, isNewPrice }, i) => (
             <div
-              className="absolute right-0 top-0 bottom-0 bg-red-800 opacity-30"
-              style={{ width: `${(total / maxTotal) * 100}%` }}
-            />
-            <div className="w-[30%] text-[#FF5B5A]">{formatNumber(price)}</div>
-            <div className="w-[30%] text-right">{formatNumber(size)}</div>
-            <div className="w-[40%] text-right">{formatNumber(total)}</div>
-          </div>
-        ))}
+              key={`ask-${i}`}
+              className="relative flex justify-between px-1 font-bold hover:bg-[#1E3059]"
+            >
+              <div
+                className={classNames(
+                  "absolute right-0 top-0 bottom-0 bg-[#ff5a5a1f] opacity-30",
+                  isNewPrice && "transition-all duration-100 bg-[#ff5a5a1f]"
+                )}
+                style={{ width: `${(total / maxTotal) * 100}%` }}
+              />
+              <div className="w-[30%] text-[#FF5B5A]">
+                {formatNumber(price)}
+              </div>
+              <div className="w-[30%] text-right">{formatNumber(size)}</div>
+              <div className="w-[40%] text-right">{formatNumber(total)}</div>
+            </div>
+          ))}
       </div>
 
       {/* Mid Price */}
@@ -96,13 +103,16 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = "BTCPFC" }) => {
 
       {/* Buys */}
       <div className="space-y-0.5">
-        {buyOrdersWithTotal.map(([price, size, total], i) => (
+        {buyOrdersWithTotal.map(({ price, size, total, isNewPrice }, i) => (
           <div
             key={`bid-${i}`}
-            className="relative flex justify-between px-1 font-bold"
+            className="relative flex justify-between px-1 font-bold hover:bg-[#1E3059]"
           >
             <div
-              className="absolute right-0 top-0 bottom-0 bg-green-800 opacity-30"
+              className={classNames(
+                "absolute right-0 top-0 bottom-0 bg-[#10ba681f] opacity-30",
+                isNewPrice && "transition-all duration-100 bg-[#10ba681f]"
+              )}
               style={{ width: `${(total / maxTotal) * 100}%` }}
             />
             <div className="w-[30%] text-[#00b15d]">{formatNumber(price)}</div>

@@ -1,11 +1,13 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import useBTSEOrderBook, { type OrderBook } from "@/lib/hooks/useBTSEOrderBook";
 import { ArrowUp } from "lucide-react";
-
-function formatNumber(n: number) {
-  return Number(n).toLocaleString();
-}
+import classNames from "classnames";
+import {
+  formatNumber,
+  ordersNumberParser,
+  orderWithTotalFormatter,
+} from "@/lib/helpers/orderFormat";
 
 type OrderBookProps = {
   symbol?: string;
@@ -14,80 +16,98 @@ type OrderBookProps = {
 const OrderBook: React.FC<OrderBookProps> = ({ symbol = "BTCPFC" }) => {
   const { bids, asks } = useBTSEOrderBook(symbol);
 
-  // Calculate cumulative totals
-  const getTotalList = (orders: [string, string][]) => {
-    let total = 0;
-    return orders.map(([price, size]) => {
-      total += parseFloat(size);
-      return [parseFloat(price), parseFloat(size), total];
-    });
-  };
+  // Middle price ref
+  const midPriceRef = useRef<number>(0);
 
-  const bidsWithTotal = getTotalList(
-    [...bids].sort(
-      (a: [string, string], b: [string, string]) =>
-        parseFloat(b[0]) - parseFloat(a[0])
-    )
-  ).slice(0, 10);
-  const asksWithTotal = getTotalList(
-    [...asks].sort(
-      (a: [string, string], b: [string, string]) =>
-        parseFloat(b[0]) - parseFloat(a[0])
-    )
-  ).slice(0, 10);
+  const [isPriceGoingUp, setIsPriceGoingUp] = useState<boolean>(false);
+
+  const buyOrdersWithTotal = orderWithTotalFormatter(
+    [...bids].map(ordersNumberParser).sort((a, b) => b[0] - a[0])
+  ).slice(0, 8);
+  const sellOrdersWithTotal = orderWithTotalFormatter(
+    [...asks].map(ordersNumberParser).sort((a, b) => a[0] - b[0])
+  ).slice(0, 8);
 
   const maxTotal = Math.max(
-    ...bidsWithTotal.map(([, , total]) => total),
-    ...asksWithTotal.map(([, , total]) => total)
+    ...buyOrdersWithTotal.map(([, , total]) => total),
+    ...sellOrdersWithTotal.map(([, , total]) => total)
   );
 
   const midPrice = ((+bids[0]?.[0] + +asks[0]?.[0]) / 2).toFixed(1);
 
-  return (
-    <div className="bg-black text-white p-4 rounded-md w-[300px] font-mono text-sm">
-      <h2 className="text-center text-lg mb-2">Order Book</h2>
-      <div className="flex justify-between text-gray-400 px-1">
-        <div className="w-1/3 text-right">Price (USD)</div>
-        <div className="w-1/3 text-right">Size</div>
-        <div className="w-1/3 text-right">Total</div>
+  useEffect(() => {
+    if (midPriceRef.current !== null) {
+      setIsPriceGoingUp(midPriceRef.current < parseFloat(midPrice));
+      midPriceRef.current = parseFloat(midPrice);
+    }
+  }, [midPrice]);
+
+  if (!bids || !asks || bids.length === 0 || asks.length === 0) {
+    return (
+      <div className="text-center text-gray-500 w-[280px] h-[450px] flex items-center justify-center">
+        Loading...
       </div>
-      {/* Asks */}
+    );
+  }
+
+  return (
+    <div className="bg-[#131B29] text-[#F0F4F8] py-4 px-2 rounded-md w-[280px] text-sm">
+      <h2 className="text-base font-bold pb-2">Order Book</h2>
+      <div className="flex justify-between text-[#8698aa] pb-1">
+        <div className="w-[30%]">Price (USD)</div>
+        <div className="w-[30%] text-right">Size</div>
+        <div className="w-[40%] text-right">Total</div>
+      </div>
+
+      {/* Sells */}
       <div className="space-y-0.5">
-        {asksWithTotal.reverse().map(([price, size, total], i) => (
+        {sellOrdersWithTotal.map(([price, size, total], i) => (
           <div
             key={`ask-${i}`}
-            className="relative flex justify-between text-red-400 px-1"
+            className="relative flex justify-between px-1 font-bold"
           >
             <div
               className="absolute right-0 top-0 bottom-0 bg-red-800 opacity-30"
               style={{ width: `${(total / maxTotal) * 100}%` }}
             />
-            <div className="w-1/3 text-right">{price}</div>
-            <div className="w-1/3 text-right">{size}</div>
-            <div className="w-1/3 text-right">{formatNumber(total)}</div>
+            <div className="w-[30%] text-[#FF5B5A]">{formatNumber(price)}</div>
+            <div className="w-[30%] text-right">{formatNumber(size)}</div>
+            <div className="w-[40%] text-right">{formatNumber(total)}</div>
           </div>
         ))}
       </div>
 
       {/* Mid Price */}
-      <div className="text-green-500 flex items-center justify-center my-1 font-semibold">
-        {midPrice} <ArrowUp className="w-4 h-4 ml-1" />
+      <div
+        className={classNames(
+          "flex items-center justify-center my-1 font-bold text-lg",
+          isPriceGoingUp ? "text-[#00b15d]" : "text-[#FF5B5A]",
+          isPriceGoingUp ? "bg-[#10ba681f]" : "bg-[#ff5a5a1f]"
+        )}
+      >
+        {midPrice}{" "}
+        <ArrowUp
+          className={classNames(
+            "w-4 h-4 ml-1",
+            isPriceGoingUp ? "rotate-0" : "rotate-180"
+          )}
+        />
       </div>
 
-      {/* Bids */}
+      {/* Buys */}
       <div className="space-y-0.5">
-        {bidsWithTotal.map(([price, size, total], i) => (
+        {buyOrdersWithTotal.map(([price, size, total], i) => (
           <div
             key={`bid-${i}`}
-            className="relative flex justify-between text-green-400 px-1"
+            className="relative flex justify-between px-1 font-bold"
           >
             <div
               className="absolute right-0 top-0 bottom-0 bg-green-800 opacity-30"
               style={{ width: `${(total / maxTotal) * 100}%` }}
             />
-            <div className="w-1/3 text-right">{price}</div>
-            <div className="w-1/3 text-right">{size}</div>
-            <div className="w-1/3 text-right">{formatNumber(total)}</div>
+            <div className="w-[30%] text-[#00b15d]">{formatNumber(price)}</div>
+            <div className="w-[30%] text-right">{formatNumber(size)}</div>
+            <div className="w-[40%] text-right">{formatNumber(total)}</div>
           </div>
         ))}
       </div>

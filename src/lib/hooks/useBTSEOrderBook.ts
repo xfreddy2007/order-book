@@ -2,18 +2,33 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type OrderBook = {
-  // The format of the order book is an array of arrays, where each inner array contains:
-  // - Price (string)
-  // - Size (string)
-  // - Boolean indicating if the price does not exist in the order book before (true/false)
-  bids: [string, string, boolean][];
-  asks: [string, string, boolean][];
+export type HighlightType = "new" | "size-up" | "size-down";
+
+export type OrderBookQuote = {
+  price: string;
+  size: string;
+  highlightType?: HighlightType;
 };
+
+type WebSocketMessage = {
+  topic?: string;
+  data?: {
+    type: "snapshot" | "delta";
+    bids?: [string, string][];
+    asks?: [string, string][];
+  };
+};
+
+export type priceFormatArray = [string, string, boolean][];
 
 export default function useBTSEOrderBook(symbol = "BTC-PERP") {
   const socketRef = useRef<WebSocket>(null);
-  const [orderBook, setOrderBook] = useState<OrderBook>({ bids: [], asks: [] });
+  const [bids, setBids] = useState<OrderBookQuote[]>([]);
+  const [asks, setAsks] = useState<OrderBookQuote[]>([]);
+
+  // Internal state for diffing
+  const prevBidsRef = useRef<Map<string, OrderBookQuote>>(new Map());
+  const prevAsksRef = useRef<Map<string, OrderBookQuote>>(new Map());
 
   useEffect(() => {
     const ws = new WebSocket("wss://ws.btse.com/ws/oss/futures");
@@ -28,38 +43,72 @@ export default function useBTSEOrderBook(symbol = "BTC-PERP") {
     };
 
     ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
+      const message: WebSocketMessage = JSON.parse(event.data);
+      const { data } = message;
+      if (!data) return;
 
-      if (message.topic && message.data) {
-        const { type, bids, asks } = message.data;
+      const { type, bids: newBidsRaw = [], asks: newAsksRaw = [] } = data;
 
-        if (type === "snapshot") {
-          setOrderBook({ bids, asks });
-        } else if (type === "delta") {
-          setOrderBook((prev) => {
-            const updateSide = (side: string, updates: [string, string][]) => {
-              const book = [...prev[side as keyof OrderBook]];
-              updates.forEach(([price, size]) => {
-                const index = book.findIndex(([p]) => p === price);
-                if (size === "0") {
-                  if (index !== -1) book.splice(index, 1);
-                } else {
-                  if (index !== -1) {
-                    book[index][1] = size;
-                  } else {
-                    book.push([price, size, true]);
-                  }
-                }
+      // Snapshot = replace, Delta = update
+      if (type === "snapshot") {
+        const bidsMap = new Map();
+        const asksMap = new Map();
+
+        newBidsRaw.forEach(([price, size]) => {
+          bidsMap.set(price, { price, size, highlightType: "new" });
+        });
+
+        newAsksRaw.forEach(([price, size]) => {
+          asksMap.set(price, { price, size, highlightType: "new" });
+        });
+
+        prevBidsRef.current = new Map(bidsMap);
+        prevAsksRef.current = new Map(asksMap);
+        setBids(Array.from(bidsMap.values()));
+        setAsks(Array.from(asksMap.values()));
+      }
+
+      if (type === "delta") {
+        const updatedBids = new Map(prevBidsRef.current);
+        const updatedAsks = new Map(prevAsksRef.current);
+
+        const processDelta = (
+          map: Map<string, OrderBookQuote>,
+          updates: [string, string][]
+        ) => {
+          updates.forEach(([price, size]) => {
+            const prev = map.get(price);
+
+            if (size === "0") {
+              map.delete(price);
+            } else if (!prev) {
+              map.set(price, {
+                price,
+                size,
+                highlightType: "new",
               });
-              return book;
-            };
+            } else {
+              const prevSize = prev.size;
+              const nextSize = size;
+              const diffType = nextSize > prevSize ? "size-up" : "size-down";
 
-            return {
-              bids: updateSide("bids", bids || []),
-              asks: updateSide("asks", asks || []),
-            };
+              map.set(price, {
+                price,
+                size,
+                highlightType: diffType,
+              });
+            }
           });
-        }
+        };
+
+        processDelta(updatedBids, newBidsRaw);
+        processDelta(updatedAsks, newAsksRaw);
+
+        prevBidsRef.current = new Map(updatedBids);
+        prevAsksRef.current = new Map(updatedAsks);
+
+        setBids(Array.from(updatedBids.values()));
+        setAsks(Array.from(updatedAsks.values()));
       }
     };
 
@@ -76,5 +125,5 @@ export default function useBTSEOrderBook(symbol = "BTC-PERP") {
     };
   }, [symbol]);
 
-  return orderBook;
+  return { bids, asks };
 }

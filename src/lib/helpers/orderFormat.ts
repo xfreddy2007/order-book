@@ -1,30 +1,34 @@
-type Order = {
+import { OrderBookQuote, HighlightType } from "@/lib/hooks/useBTSEOrderBook";
+
+export type ParsedOrderBookQuote = {
   price: number;
   size: number;
-  isNewPrice: boolean;
+  highlightType?: HighlightType;
 };
 
-type OrderWithTotal = Order & { total: number };
+export type OrderWithTotal = ParsedOrderBookQuote & { total: number };
 
-export const ordersNumberParser = ([price, size, isNewPrice]: [
-  string,
-  string,
-  boolean
-]): {
+export const ordersNumberParser = ({
+  price,
+  size,
+  highlightType,
+}: OrderBookQuote): {
   price: number;
   size: number;
-  isNewPrice: boolean;
+  highlightType?: HighlightType;
 } => {
   const parsedSize = parseFloat(size) ?? 0;
   const parsedPrice = parseFloat(price) ?? 0;
-  return { price: parsedPrice, size: parsedSize, isNewPrice };
+  return { price: parsedPrice, size: parsedSize, highlightType };
 };
 
-export const orderWithTotalFormatter = (orders: Order[]): OrderWithTotal[] => {
+export const orderWithTotalFormatter = (
+  orders: ParsedOrderBookQuote[]
+): OrderWithTotal[] => {
   let total = 0;
-  return orders.map(({ price, size, isNewPrice }) => {
+  return orders.map(({ price, size, highlightType }) => {
     total += size;
-    return { price, size, total, isNewPrice };
+    return { price, size, total, highlightType };
   });
 };
 

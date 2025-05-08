@@ -1,11 +1,11 @@
 "use client";
-
-import OrderBook from "@/components/OrderBook";
+import React from "react";
+import OrderBookContainer from "@/containers/OrderBookContainer";
 
 const Home: React.FC = () => {
   return (
     <main>
-      <OrderBook symbol="BTCPFC" />
+      <OrderBookContainer />
     </main>
   );
 };

@@ -1,0 +1,29 @@
+@keyframes buyFlash {
+  0% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: #00b15d80;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@keyframes sellFlash {
+  0% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: #ff5b5a80;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.buy-animation {
+  animation: buyFlash 0.5s ease-in-out;
+}
+.sell-animation {
+  animation: sellFlash 0.5s ease-in-out;
+}

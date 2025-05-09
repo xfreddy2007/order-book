@@ -1,6 +1,7 @@
 import React from "react";
 import classNames from "classnames";
 import { formatNumber } from "@/lib/helpers/orderFormat";
+import "./PriceRow.css";
 
 type PriceRowProps = {
   type: "buy" | "sell";
@@ -23,8 +24,8 @@ const PriceRow: React.FC<PriceRowProps> = ({
     <div
       className={classNames(
         "relative flex justify-between px-1 font-bold transition-all hover:bg-[#1E3059]",
-        type === "buy" && isNewPrice && "bg-[#00b15d80] duration-100",
-        type === "sell" && isNewPrice && "bg-[#ff5b5a80] duration-100"
+        type === "buy" && isNewPrice && "buy-animation",
+        type === "sell" && isNewPrice && "sell-animation"
       )}
     >
       <div
